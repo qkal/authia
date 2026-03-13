@@ -1,8 +1,12 @@
-import type { AuthConfig, SupportedAction, ValidationResult } from '@authia/contracts';
+import { supportedActions, type AuthConfig, type SupportedAction, type ValidationResult } from '@authia/contracts';
 
 const builtInActions: SupportedAction[] = ['getSession', 'refreshSession', 'logout', 'logoutAll'];
 
-export function validateStartupConfig(config: AuthConfig, pluginActions: SupportedAction[] = []): ValidationResult {
+export function validateStartupConfig(
+  config: AuthConfig,
+  pluginActions: SupportedAction[] = [],
+  runtimeCapabilities: { redirects: boolean } = { redirects: false }
+): ValidationResult {
   if (!config.sessionCookieName) {
     return {
       ok: false,
@@ -51,6 +55,37 @@ export function validateStartupConfig(config: AuthConfig, pluginActions: Support
         message: `Plugin cannot own built-in action ${action}.`
       };
     }
+  }
+
+  const ownedActions = new Set<SupportedAction>(builtInActions);
+  for (const action of pluginActions) {
+    if (ownedActions.has(action)) {
+      return {
+        ok: false,
+        code: 'RUNTIME_MISCONFIGURED',
+        message: `Action ownership conflict detected for ${action}.`
+      };
+    }
+    ownedActions.add(action);
+  }
+
+  for (const action of supportedActions) {
+    if (!ownedActions.has(action)) {
+      return {
+        ok: false,
+        code: 'RUNTIME_MISCONFIGURED',
+        message: `Missing action owner for ${action}.`
+      };
+    }
+  }
+
+  const needsRedirects = config.policies.some((policy) => policy.capabilities.mayRedirect);
+  if (needsRedirects && !runtimeCapabilities.redirects) {
+    return {
+      ok: false,
+      code: 'RUNTIME_MISCONFIGURED',
+      message: 'Redirect policies require runtime redirect capability.'
+    };
   }
 
   return { ok: true };
