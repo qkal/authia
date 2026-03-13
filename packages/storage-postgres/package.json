@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@authia/contracts": "file:../contracts"
+    "@authia/contracts": "file:../contracts",
+    "pg": "^8.20.0"
   }
 }
