@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:integration": "vitest run \"tests/integration/cycle1-reference-flow.test.ts\"",
     "test:oauth": "vitest run \"tests/integration/cycle2-oauth-reference-flow.test.ts\"",
+    "test:oauth:required": "node --eval \"if (!process.env.TEST_DATABASE_URL) { console.error('TEST_DATABASE_URL must be set for test:oauth:required'); process.exit(1); }\" && vitest run \"tests/integration/cycle2-oauth-reference-flow.test.ts\"",
     "example:cycle1": "node --eval \"import('./examples/cycle1-compose.ts').then(() => console.log('cycle1 composition module loaded'))\""
   },
   "devDependencies": {
