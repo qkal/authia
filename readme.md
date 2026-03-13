@@ -165,7 +165,9 @@ audits/
 
 ## Copyright
 
-Startup name: Complexia (complexia.org), All rights reserved.
+Copyright (c) 2026 Complexia.org
+
+All rights reserved.
 
 Viewing the source code is permitted for reference only.
 
