@@ -82,10 +82,9 @@ describe('createDefaultCryptoProvider', () => {
   });
 
   describe('crypto hardening', () => {
-    it('uses timing-safe comparison for opaque token verification', async () => {
-      // This test verifies that verifyOpaqueToken uses a timing-safe comparison
-      // by checking that it properly compares tokens of different lengths without
-      // early exit (which would leak timing information)
+    it('verifies opaque tokens correctly for matching and non-matching cases', async () => {
+      // This test verifies functional correctness of token verification.
+      // For timing-safety implementation proofs, see crypto-timing-safe.test.ts
       const provider = createDefaultCryptoProvider();
 
       const token = 'opaque-token';

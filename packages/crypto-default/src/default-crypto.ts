@@ -85,12 +85,14 @@ export function createDefaultCryptoProvider(
           return false;
         }
         
-        if (derived.length !== verifier.length) {
-          return false;
-        }
+        // Pad both strings to the same length to prevent timing attacks based on length
+        // This ensures timingSafeEqual is always called with equal-length buffers
+        const maxLength = Math.max(derived.length, verifier.length);
+        const derivedPadded = derived.padEnd(maxLength, '\0');
+        const verifierPadded = verifier.padEnd(maxLength, '\0');
         
-        const derivedBuffer = Buffer.from(derived, 'utf8');
-        const verifierBuffer = Buffer.from(verifier, 'utf8');
+        const derivedBuffer = Buffer.from(derivedPadded, 'utf8');
+        const verifierBuffer = Buffer.from(verifierPadded, 'utf8');
         
         return timingSafeEqual(derivedBuffer, verifierBuffer);
       } catch {
