@@ -26,8 +26,8 @@ export type PluginServices = {
     users: TransactionalStorage['users'];
     identities: TransactionalStorage['identities'];
     sessions: TransactionalStorage['sessions'];
-    oauthStates: TransactionalStorage['oauthStates'];
-    oauthIdentities: TransactionalStorage['oauthIdentities'];
+    oauthStates?: TransactionalStorage['oauthStates'];
+    oauthIdentities?: TransactionalStorage['oauthIdentities'];
     beginTransaction: <T>(run: (tx: TransactionalStorage) => Promise<T>) => Promise<AuthValue<T>>;
   };
   crypto: {
@@ -60,13 +60,13 @@ export type PluginServices = {
     revokeSession: (sessionId: string, tx?: TransactionalStorage) => Promise<AuthValue<void>>;
     revokeAllSessions: (userId: string, tx?: TransactionalStorage) => Promise<AuthValue<number>>;
   };
-  oauthStateStore: {
+  oauthStateStore?: {
     create: (input: OAuthStateCreateInput) => Promise<AuthValue<OAuthState>>;
     consume: (
       input: OAuthStateConsumeInput
     ) => Promise<AuthValue<{ codeVerifierCiphertext: string; redirectUriHash: string } | null>>;
   };
-  oauthProviderClient: {
+  oauthProviderClient?: {
     buildAuthorizationUrl: (input: {
       providerId: string;
       redirectUri: string;

@@ -14,6 +14,21 @@ export function validateStartupConfig(
       config.entrypointTransport[action] !== undefined
   );
 
+  const optionalOAuthActions: SupportedAction[] = ['startOAuth', 'finishOAuth'];
+  for (const action of optionalOAuthActions) {
+    const hasMethod = config.entrypointMethods[action] !== undefined;
+    const hasPath = config.entrypointPaths[action] !== undefined;
+    const hasTransport = config.entrypointTransport[action] !== undefined;
+    const configuredCount = [hasMethod, hasPath, hasTransport].filter(Boolean).length;
+    if (configuredCount > 0 && configuredCount < 3) {
+      return {
+        ok: false,
+        code: 'RUNTIME_MISCONFIGURED',
+        message: `${action} must define method, path, and transport together.`
+      };
+    }
+  }
+
   if (!config.sessionCookieName) {
     return {
       ok: false,

@@ -93,13 +93,13 @@ export type TransactionalStorage = {
     revoke: (sessionId: string) => Promise<AuthValue<void>>;
     revokeAllForUser: (userId: string) => Promise<AuthValue<number>>;
   };
-  oauthStates: {
+  oauthStates?: {
     create: (input: OAuthStateCreateInput) => Promise<AuthValue<OAuthState>>;
     consume: (
       input: OAuthStateConsumeInput
     ) => Promise<AuthValue<{ codeVerifierCiphertext: string; redirectUriHash: string } | null>>;
   };
-  oauthIdentities: {
+  oauthIdentities?: {
     create: (input: OAuthIdentityCreateInput) => Promise<AuthValue<OAuthIdentity>>;
     findByProviderSubject: (
       provider: string,
@@ -113,7 +113,7 @@ export type StorageAdapter = {
   users: TransactionalStorage['users'];
   identities: TransactionalStorage['identities'];
   sessions: TransactionalStorage['sessions'];
-  oauthStates: TransactionalStorage['oauthStates'];
-  oauthIdentities: TransactionalStorage['oauthIdentities'];
+  oauthStates?: TransactionalStorage['oauthStates'];
+  oauthIdentities?: TransactionalStorage['oauthIdentities'];
   beginTransaction: <T>(run: (tx: TransactionalStorage) => Promise<T>) => Promise<AuthValue<T>>;
 };

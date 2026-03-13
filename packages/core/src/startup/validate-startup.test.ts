@@ -141,6 +141,24 @@ describe('validateStartupConfig', () => {
     expect(noPath.ok).toBe(false);
   });
 
+  it('rejects partial OAuth action route configuration', () => {
+    const result = validateStartupConfig(
+      {
+        ...baseConfig,
+        entrypointMethods: {
+          ...baseConfig.entrypointMethods,
+          startOAuth: 'POST'
+        }
+      } as any,
+      [...pluginActions]
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain('startOAuth');
+    }
+  });
+
   it('passes for valid configuration and complete ownership', () => {
     const result = validateStartupConfig(baseConfig, [...pluginActions], { redirects: false });
 
