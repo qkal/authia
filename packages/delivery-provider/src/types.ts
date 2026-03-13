@@ -37,7 +37,9 @@ export type PolicyConfig = {
 };
 
 export type ExecuteWithPolicyInput = {
+  channel: DeliveryTelemetryEvent['channel'];
   run: (context: { attempt: number }) => Promise<void>;
+  telemetry?: DeliveryTelemetry;
   sleep?: (ms: number) => Promise<void>;
   maxRetries: number;
   backoffMs: readonly number[];
