@@ -19,6 +19,7 @@ type NodemailerTransport = {
     subject: string;
     text: string;
   }) => Promise<unknown>;
+  close?: () => Promise<void> | void;
 };
 
 type SmtpTransportOptions = Pick<SmtpConfig, 'host' | 'port' | 'secure' | 'auth'>;
@@ -39,7 +40,7 @@ export function createSmtpProvider(
     transportFactory?.(transportOptions) ??
     nodemailer.createTransport(transportOptions);
 
-  return {
+  const provider: DeliveryTransport = {
     deliver: async (message: OutboundEmailMessage): Promise<void> => {
       await transport.sendMail({
         from: config.from,
@@ -47,6 +48,13 @@ export function createSmtpProvider(
         subject: message.subject,
         text: message.text
       });
+    },
+    close: async (): Promise<void> => {
+      if (typeof transport.close === 'function') {
+        await transport.close();
+      }
     }
   };
+
+  return provider;
 }
