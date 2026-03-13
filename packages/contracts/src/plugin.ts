@@ -50,7 +50,11 @@ export type PluginServices = {
       session: SessionRecord,
       tx: TransactionalStorage,
       context: RequestContext
-    ) => Promise<AuthValue<{ session: SessionRecord; transport: SessionTransport }>>;
+    ) => Promise<
+      | AuthValue<{ session: SessionRecord; transport: SessionTransport }>
+      | { kind: 'denied'; code: 'INVALID_INPUT' }
+      | { kind: 'unauthenticated'; code: 'SESSION_EXPIRED' | 'SESSION_REVOKED' }
+    >;
     revokeSession: (sessionId: string, tx?: TransactionalStorage) => Promise<AuthValue<void>>;
     revokeAllSessions: (userId: string, tx?: TransactionalStorage) => Promise<AuthValue<number>>;
   };
