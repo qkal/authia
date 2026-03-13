@@ -68,4 +68,38 @@ describe('delivery-provider exports', () => {
     expect(transport.deliver).toHaveBeenCalledTimes(3);
     expect(delays).toEqual([100, 300]);
   });
+
+  it('does not leak secrets in timeout-after-dispatch failures', async () => {
+    const message: OutboundEmailMessage = {
+      to: 'user@example.com',
+      subject: 'Complete your sign in',
+      text: 'Use the one-time link to complete sign in.'
+    };
+    const transport = {
+      deliver: vi.fn(async () => {
+        throw {
+          type: 'timeout-after-dispatch',
+          message: 'provider secret=delivery-secret'
+        };
+      })
+    };
+    const provider = createResilientDeliveryProvider({
+      channel: 'smtp',
+      transport,
+      policy: {
+        maxRetries: 0,
+        backoffMs: [10],
+        timeoutMs: 25
+      }
+    });
+
+    const result = await provider.send(message);
+
+    expect(result).toMatchObject({
+      code: 'DELIVERY_UNAVAILABLE',
+      retryable: false,
+      message: 'Delivery status unknown after dispatch.'
+    });
+    expect(result?.message).not.toContain('secret=delivery-secret');
+  });
 });

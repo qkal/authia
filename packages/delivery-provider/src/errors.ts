@@ -36,6 +36,18 @@ const defaultMessages: Record<DeliveryErrorCode, string> = {
   DELIVERY_MISCONFIGURED: 'Delivery provider credentials or configuration are invalid.'
 };
 
+const canonicalMessages = {
+  httpRejected: 'Delivery request was rejected by the provider.',
+  httpNetwork: 'Delivery request failed due to network error.',
+  smtpAuth: 'SMTP authentication failed.',
+  smtpUnavailable: 'SMTP transport unavailable.',
+  smtpTemporary: 'SMTP temporary failure.',
+  smtpPermanent: 'SMTP permanent failure.',
+  smtpGeneric: 'SMTP delivery failed.',
+  timeout: 'Delivery attempt timed out.',
+  timeoutAfterDispatch: 'Delivery status unknown after dispatch.'
+} as const;
+
 function createDeliveryError(code: DeliveryErrorCode, retryable: boolean, message?: string): AuthError {
   return {
     category: 'infrastructure',
@@ -55,48 +67,44 @@ export function mapHttpFailure(input: HttpFailure = {}): AuthError {
   }
 
   if ([400, 404, 422].includes(input?.status ?? 0)) {
-    return createDeliveryError('DELIVERY_UNAVAILABLE', false, 'Delivery request was rejected by the provider.');
+    return createDeliveryError('DELIVERY_UNAVAILABLE', false, canonicalMessages.httpRejected);
   }
 
   if (typeof input?.status === 'number' && input.status >= 500) {
     return createDeliveryError('DELIVERY_UNAVAILABLE', true);
   }
 
-  return createDeliveryError(
-    'DELIVERY_UNAVAILABLE',
-    true,
-    input?.message ?? 'Delivery request failed due to network error.'
-  );
+  return createDeliveryError('DELIVERY_UNAVAILABLE', true, canonicalMessages.httpNetwork);
 }
 
 export function mapSmtpFailure(input: SmtpFailure = {}): AuthError {
   if (input?.code === 'EAUTH') {
-    return createDeliveryError('DELIVERY_MISCONFIGURED', false, 'SMTP authentication failed.');
+    return createDeliveryError('DELIVERY_MISCONFIGURED', false, canonicalMessages.smtpAuth);
   }
 
   if (input?.code && networkErrorCodes.has(input.code)) {
-    return createDeliveryError('DELIVERY_UNAVAILABLE', true, input.message ?? 'SMTP transport unavailable.');
+    return createDeliveryError('DELIVERY_UNAVAILABLE', true, canonicalMessages.smtpUnavailable);
   }
 
   if (typeof input?.responseCode === 'number') {
     if (input.responseCode >= 400 && input.responseCode < 500) {
-      return createDeliveryError('DELIVERY_UNAVAILABLE', true, 'SMTP temporary failure.');
+      return createDeliveryError('DELIVERY_UNAVAILABLE', true, canonicalMessages.smtpTemporary);
     }
     if (input.responseCode >= 500) {
-      return createDeliveryError('DELIVERY_UNAVAILABLE', false, 'SMTP permanent failure.');
+      return createDeliveryError('DELIVERY_UNAVAILABLE', false, canonicalMessages.smtpPermanent);
     }
   }
 
-  return createDeliveryError('DELIVERY_UNAVAILABLE', false, input?.message ?? 'SMTP delivery failed.');
+  return createDeliveryError('DELIVERY_UNAVAILABLE', false, canonicalMessages.smtpGeneric);
 }
 
 export function mapTransportFailure(error: unknown): AuthError {
   if (isTimeoutAfterDispatch(error)) {
-    return createDeliveryError('DELIVERY_UNAVAILABLE', false, error.message ?? 'Delivery status unknown after dispatch.');
+    return createDeliveryError('DELIVERY_UNAVAILABLE', false, canonicalMessages.timeoutAfterDispatch);
   }
 
   if (isTimeoutError(error)) {
-    return createDeliveryError('DELIVERY_UNAVAILABLE', true, error.message ?? 'Delivery attempt timed out.');
+    return createDeliveryError('DELIVERY_UNAVAILABLE', true, canonicalMessages.timeout);
   }
 
   if (isHttpFailure(error)) {
