@@ -71,6 +71,27 @@ const storageAdapter: StorageAdapter = {
     revoke: async () => undefined,
     revokeAllForUser: async () => 0
   },
+  oauthStates: {
+    create: async () => ({
+      id: 'state',
+      provider: 'github',
+      stateHash: 'hash',
+      codeVerifierCiphertext: 'ciphertext',
+      redirectUriHash: 'redirect-hash',
+      expiresAt: '',
+      consumedAt: null
+    }),
+    consume: async () => null
+  },
+  oauthIdentities: {
+    create: async () => ({
+      id: 'oauth-identity',
+      userId: 'user',
+      provider: 'github',
+      providerSubject: 'provider-subject'
+    }),
+    findByProviderSubject: async () => null
+  },
   beginTransaction: async <T>(run: (tx: never) => Promise<T>) => run({} as never)
 };
 
@@ -104,6 +125,24 @@ const sessionLayer: SessionLayer = {
   revokeAllSessions: async () => 0
 };
 
+const oauthStateStore: PluginServices['oauthStateStore'] = {
+  create: async () => ({
+    id: 'state',
+    provider: 'github',
+    stateHash: 'hash',
+    codeVerifierCiphertext: 'ciphertext',
+    redirectUriHash: 'redirect-hash',
+    expiresAt: '',
+    consumedAt: null
+  }),
+  consume: async () => null
+};
+
+const oauthProviderClient: PluginServices['oauthProviderClient'] = {
+  buildAuthorizationUrl: () => 'https://provider.example/authorize',
+  exchangeCode: async () => ({ providerSubject: 'provider-subject' })
+};
+
 const plugin: Plugin = {
   id: 'plugin',
   actions: () => ['signUpWithPassword'],
@@ -119,4 +158,6 @@ void policy;
 void crypto;
 void storageAdapter;
 void sessionLayer;
+void oauthStateStore;
+void oauthProviderClient;
 void plugin;

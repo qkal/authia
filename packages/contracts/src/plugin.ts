@@ -8,7 +8,7 @@ import type {
   SessionValidationOutcome,
   User
 } from './session.js';
-import type { TransactionalStorage } from './storage.js';
+import type { OAuthState, OAuthStateConsumeInput, OAuthStateCreateInput, TransactionalStorage } from './storage.js';
 
 export type PolicyDecision =
   | { kind: 'allow' }
@@ -26,6 +26,8 @@ export type PluginServices = {
     users: TransactionalStorage['users'];
     identities: TransactionalStorage['identities'];
     sessions: TransactionalStorage['sessions'];
+    oauthStates: TransactionalStorage['oauthStates'];
+    oauthIdentities: TransactionalStorage['oauthIdentities'];
     beginTransaction: <T>(run: (tx: TransactionalStorage) => Promise<T>) => Promise<AuthValue<T>>;
   };
   crypto: {
@@ -57,6 +59,26 @@ export type PluginServices = {
     >;
     revokeSession: (sessionId: string, tx?: TransactionalStorage) => Promise<AuthValue<void>>;
     revokeAllSessions: (userId: string, tx?: TransactionalStorage) => Promise<AuthValue<number>>;
+  };
+  oauthStateStore: {
+    create: (input: OAuthStateCreateInput) => Promise<AuthValue<OAuthState>>;
+    consume: (
+      input: OAuthStateConsumeInput
+    ) => Promise<AuthValue<{ codeVerifierCiphertext: string; redirectUriHash: string } | null>>;
+  };
+  oauthProviderClient: {
+    buildAuthorizationUrl: (input: {
+      providerId: string;
+      redirectUri: string;
+      state: string;
+      codeChallenge: string;
+    }) => AuthValue<string>;
+    exchangeCode: (input: {
+      providerId: string;
+      code: string;
+      redirectUri: string;
+      codeVerifier: string;
+    }) => Promise<AuthValue<{ providerSubject: string }>>;
   };
 };
 

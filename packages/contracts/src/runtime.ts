@@ -62,6 +62,10 @@ export type RequestContext = {
   body?: {
     email?: string;
     password?: string;
+    provider?: string;
+    redirectTo?: string;
+    code?: string;
+    state?: string;
   };
   session?: AuthenticatedSession | null;
 };
@@ -69,7 +73,7 @@ export type RequestContext = {
 export type AuthResult =
   | {
       kind: 'success';
-      action: 'signUpWithPassword' | 'signInWithPassword' | 'refreshSession';
+      action: 'signUpWithPassword' | 'signInWithPassword' | 'refreshSession' | 'finishOAuth';
       subject: User;
       session: SessionRecord;
       transport: SessionTransport;

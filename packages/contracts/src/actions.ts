@@ -4,7 +4,9 @@ export const supportedActions = [
   'getSession',
   'refreshSession',
   'logout',
-  'logoutAll'
+  'logoutAll',
+  'startOAuth',
+  'finishOAuth'
 ] as const;
 
 export type SupportedAction = (typeof supportedActions)[number];
@@ -18,6 +20,8 @@ export type EntrypointMethodMap = {
   refreshSession: 'POST';
   logout: 'POST';
   logoutAll: 'POST';
+  startOAuth: 'POST';
+  finishOAuth: 'POST';
 };
 
 export type EntrypointTransportMap = {
@@ -27,6 +31,8 @@ export type EntrypointTransportMap = {
   refreshSession: 'cookie' | 'bearer';
   logout: 'cookie' | 'bearer';
   logoutAll: 'cookie' | 'bearer';
+  startOAuth: 'cookie' | 'bearer';
+  finishOAuth: 'cookie' | 'bearer';
 };
 
 export type EntrypointPathMap = {
@@ -36,6 +42,8 @@ export type EntrypointPathMap = {
   refreshSession: string;
   logout: string;
   logoutAll: string;
+  startOAuth: string;
+  finishOAuth: string;
 };
 
 export const defaultEntrypointMethods = {
@@ -44,5 +52,7 @@ export const defaultEntrypointMethods = {
   getSession: 'GET',
   refreshSession: 'POST',
   logout: 'POST',
-  logoutAll: 'POST'
+  logoutAll: 'POST',
+  startOAuth: 'POST',
+  finishOAuth: 'POST'
 } as const satisfies EntrypointMethodMap;

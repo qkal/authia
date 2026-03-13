@@ -35,6 +35,43 @@ export type SessionCompareAndSwapInput = {
   nextIdleExpiresAt: string;
 };
 
+export type OAuthStateCreateInput = {
+  provider: string;
+  stateHash: string;
+  codeVerifierCiphertext: string;
+  redirectUriHash: string;
+  expiresAt: string;
+};
+
+export type OAuthStateConsumeInput = {
+  provider: string;
+  stateHash: string;
+  nowIso: string;
+};
+
+export type OAuthState = {
+  id: string;
+  provider: string;
+  stateHash: string;
+  codeVerifierCiphertext: string;
+  redirectUriHash: string;
+  expiresAt: string;
+  consumedAt: string | null;
+};
+
+export type OAuthIdentityCreateInput = {
+  userId: string;
+  provider: string;
+  providerSubject: string;
+};
+
+export type OAuthIdentity = {
+  id: string;
+  userId: string;
+  provider: string;
+  providerSubject: string;
+};
+
 export type TransactionalStorage = {
   migrations: {
     ensureCompatibleSchema: () => Promise<'ok' | 'MIGRATION_MISMATCH' | AuthError>;
@@ -56,6 +93,19 @@ export type TransactionalStorage = {
     revoke: (sessionId: string) => Promise<AuthValue<void>>;
     revokeAllForUser: (userId: string) => Promise<AuthValue<number>>;
   };
+  oauthStates: {
+    create: (input: OAuthStateCreateInput) => Promise<AuthValue<OAuthState>>;
+    consume: (
+      input: OAuthStateConsumeInput
+    ) => Promise<AuthValue<{ codeVerifierCiphertext: string; redirectUriHash: string } | null>>;
+  };
+  oauthIdentities: {
+    create: (input: OAuthIdentityCreateInput) => Promise<AuthValue<OAuthIdentity>>;
+    findByProviderSubject: (
+      provider: string,
+      providerSubject: string
+    ) => Promise<AuthValue<OAuthIdentity | null>>;
+  };
 };
 
 export type StorageAdapter = {
@@ -63,5 +113,7 @@ export type StorageAdapter = {
   users: TransactionalStorage['users'];
   identities: TransactionalStorage['identities'];
   sessions: TransactionalStorage['sessions'];
+  oauthStates: TransactionalStorage['oauthStates'];
+  oauthIdentities: TransactionalStorage['oauthIdentities'];
   beginTransaction: <T>(run: (tx: TransactionalStorage) => Promise<T>) => Promise<AuthValue<T>>;
 };

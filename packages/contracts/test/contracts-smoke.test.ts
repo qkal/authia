@@ -16,7 +16,9 @@ describe('contracts package', () => {
       'getSession',
       'refreshSession',
       'logout',
-      'logoutAll'
+      'logoutAll',
+      'startOAuth',
+      'finishOAuth'
     ]);
   });
 
@@ -27,7 +29,9 @@ describe('contracts package', () => {
       getSession: 'GET',
       refreshSession: 'POST',
       logout: 'POST',
-      logoutAll: 'POST'
+      logoutAll: 'POST',
+      startOAuth: 'POST',
+      finishOAuth: 'POST'
     });
   });
 
