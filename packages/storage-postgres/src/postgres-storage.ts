@@ -4,7 +4,8 @@ import { ensureCompatibleSchema } from './migrations/ensure-compatible-schema.js
 import { createUsersRepository } from './repositories/users-repository.js';
 import { createIdentitiesRepository } from './repositories/identities-repository.js';
 import { createSessionsRepository } from './repositories/sessions-repository.js';
-import { createOAuthIdentitiesStubRepository, createOAuthStatesStubRepository } from './repositories/oauth-stubs.js';
+import { createOAuthStatesRepository } from './repositories/oauth-states-repository.js';
+import { createOAuthIdentitiesRepository } from './repositories/oauth-identities-repository.js';
 import { beginTransaction } from './transactions.js';
 
 export function createPostgresStorageAdapter(connectionString: string): StorageAdapter {
@@ -17,8 +18,8 @@ export function createPostgresStorageAdapter(connectionString: string): StorageA
     users: createUsersRepository(pool),
     identities: createIdentitiesRepository(pool),
     sessions: createSessionsRepository(pool),
-    oauthStates: createOAuthStatesStubRepository(),
-    oauthIdentities: createOAuthIdentitiesStubRepository(),
+    oauthStates: createOAuthStatesRepository(pool),
+    oauthIdentities: createOAuthIdentitiesRepository(pool),
     beginTransaction: async (run) => beginTransaction(connectionString, run)
   };
 }

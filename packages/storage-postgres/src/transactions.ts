@@ -4,7 +4,8 @@ import { storageUnavailable, createPool } from './database.js';
 import { createUsersRepository } from './repositories/users-repository.js';
 import { createIdentitiesRepository } from './repositories/identities-repository.js';
 import { createSessionsRepository } from './repositories/sessions-repository.js';
-import { createOAuthIdentitiesStubRepository, createOAuthStatesStubRepository } from './repositories/oauth-stubs.js';
+import { createOAuthStatesRepository } from './repositories/oauth-states-repository.js';
+import { createOAuthIdentitiesRepository } from './repositories/oauth-identities-repository.js';
 import { ensureCompatibleSchema } from './migrations/ensure-compatible-schema.js';
 
 function isRollbackSignal(error: unknown): error is RollbackSignal {
@@ -24,8 +25,8 @@ function createTransactionalStorage(client: DatabaseClient): TransactionalStorag
     users: createUsersRepository(client),
     identities: createIdentitiesRepository(client),
     sessions: createSessionsRepository(client),
-    oauthStates: createOAuthStatesStubRepository(),
-    oauthIdentities: createOAuthIdentitiesStubRepository()
+    oauthStates: createOAuthStatesRepository(client),
+    oauthIdentities: createOAuthIdentitiesRepository(client)
   };
 }
 
