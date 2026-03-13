@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { AuthError, PluginServices } from '@authia/contracts';
 
 function cryptoFailure(message: string): AuthError {
@@ -22,7 +22,10 @@ type CryptoDependencies = {
 const defaultDependencies: CryptoDependencies = {
   hashSecret: async (value) =>
     argon2.hash(value, {
-      type: argon2.argon2id
+      type: argon2.argon2id,
+      timeCost: 2,
+      memoryCost: 19456,
+      parallelism: 1
     }),
   verifySecret: async (value, hash) => argon2.verify(hash, value),
   generateOpaqueToken: () => randomBytes(32).toString('hex'),
@@ -76,7 +79,20 @@ export function createDefaultCryptoProvider(
     },
     verifyOpaqueToken: async (token, verifier) => {
       try {
-        return (await dependencies.deriveTokenVerifier(token)) === verifier;
+        const derived = await dependencies.deriveTokenVerifier(token);
+        
+        if (typeof derived !== 'string' || typeof verifier !== 'string') {
+          return false;
+        }
+        
+        if (derived.length !== verifier.length) {
+          return false;
+        }
+        
+        const derivedBuffer = Buffer.from(derived, 'utf8');
+        const verifierBuffer = Buffer.from(verifier, 'utf8');
+        
+        return timingSafeEqual(derivedBuffer, verifierBuffer);
       } catch {
         return cryptoFailure('Failed to verify opaque token.');
       }
