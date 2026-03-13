@@ -5,6 +5,7 @@ import { validateStartupConfig } from './validate-startup.js';
 
 describe('validateStartupConfig', () => {
   const pluginActions = ['signUpWithPassword', 'signInWithPassword'] as const;
+  const oauthActions = ['startOAuth', 'finishOAuth'] as const;
   const baseConfig: AuthConfig = {
     sessionCookieName: 'auth_session',
     cookieOptions: {
@@ -164,4 +165,108 @@ describe('validateStartupConfig', () => {
 
     expect(result.ok).toBe(true);
   });
+
+  it('rejects configured OAuth actions when oauthProviders are missing', () => {
+    const result = validateStartupConfig(
+      createOAuthConfiguredConfig(baseConfig),
+      [...pluginActions, ...oauthActions] as any,
+      { redirects: true }
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain('oauthProviders');
+    }
+  });
+
+  it('rejects oauth provider config when required provider fields are missing', () => {
+    const result = validateStartupConfig(
+      createOAuthConfiguredConfig(baseConfig, {
+        oauthProviders: {
+          github: {
+            clientId: '',
+            authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+            tokenEndpoint: 'https://github.com/login/oauth/access_token',
+            callbackPath: '/auth/oauth/callback',
+            pkceMethod: 'S256'
+          }
+        }
+      }),
+      [...pluginActions, ...oauthActions] as any,
+      { redirects: true }
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain('missing required');
+    }
+  });
+
+  it('rejects oauth provider config when PKCE method is not S256', () => {
+    const result = validateStartupConfig(
+      createOAuthConfiguredConfig(baseConfig, {
+        oauthProviders: {
+          github: {
+            clientId: 'client-id',
+            authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+            tokenEndpoint: 'https://github.com/login/oauth/access_token',
+            callbackPath: '/auth/oauth/callback',
+            pkceMethod: 'plain'
+          }
+        }
+      }),
+      [...pluginActions, ...oauthActions] as any,
+      { redirects: true }
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain('S256');
+    }
+  });
+
+  it('rejects configured OAuth actions when runtime lacks redirect capability', () => {
+    const result = validateStartupConfig(
+      createOAuthConfiguredConfig(baseConfig, {
+        oauthProviders: {
+          github: {
+            clientId: 'client-id',
+            authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+            tokenEndpoint: 'https://github.com/login/oauth/access_token',
+            callbackPath: '/auth/oauth/callback',
+            pkceMethod: 'S256'
+          }
+        }
+      }),
+      [...pluginActions, ...oauthActions] as any,
+      { redirects: false }
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain('redirect');
+    }
+  });
 });
+
+function createOAuthConfiguredConfig(baseConfig: AuthConfig, overrides: Partial<AuthConfig> = {}): AuthConfig {
+  return {
+    ...baseConfig,
+    entrypointMethods: {
+      ...baseConfig.entrypointMethods,
+      startOAuth: 'POST',
+      finishOAuth: 'POST'
+    },
+    entrypointPaths: {
+      ...baseConfig.entrypointPaths,
+      startOAuth: '/auth/oauth/start',
+      finishOAuth: '/auth/oauth/finish'
+    },
+    entrypointTransport: {
+      ...baseConfig.entrypointTransport,
+      startOAuth: 'bearer',
+      finishOAuth: 'bearer'
+    },
+    ...overrides
+  };
+}

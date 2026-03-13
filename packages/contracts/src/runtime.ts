@@ -126,6 +126,16 @@ export type AuthConfig = {
     httpOnly: true;
   };
   sessionCookieName: string;
+  oauthProviders?: Record<
+    string,
+    {
+      clientId: string;
+      authorizationEndpoint: string;
+      tokenEndpoint: string;
+      callbackPath: string;
+      pkceMethod: 'S256' | 'plain';
+    }
+  >;
 };
 
 export type RuntimeAdapter = {

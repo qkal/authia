@@ -29,6 +29,46 @@ export function validateStartupConfig(
     }
   }
 
+  const hasOAuthConfigured = optionalOAuthActions.some((action) => configuredActions.includes(action));
+  if (hasOAuthConfigured) {
+    const providers = config.oauthProviders;
+    if (!providers || Object.keys(providers).length === 0) {
+      return {
+        ok: false,
+        code: 'RUNTIME_MISCONFIGURED',
+        message: 'OAuth actions require oauthProviders configuration.'
+      };
+    }
+    for (const [providerId, provider] of Object.entries(providers)) {
+      if (
+        !provider.clientId ||
+        !provider.authorizationEndpoint ||
+        !provider.tokenEndpoint ||
+        !provider.callbackPath
+      ) {
+        return {
+          ok: false,
+          code: 'RUNTIME_MISCONFIGURED',
+          message: `OAuth provider ${providerId} is missing required configuration.`
+        };
+      }
+      if (provider.pkceMethod !== 'S256') {
+        return {
+          ok: false,
+          code: 'RUNTIME_MISCONFIGURED',
+          message: `OAuth provider ${providerId} must use PKCE S256.`
+        };
+      }
+    }
+    if (!runtimeCapabilities.redirects) {
+      return {
+        ok: false,
+        code: 'RUNTIME_MISCONFIGURED',
+        message: 'OAuth actions require runtime redirect capability.'
+      };
+    }
+  }
+
   if (!config.sessionCookieName) {
     return {
       ok: false,
