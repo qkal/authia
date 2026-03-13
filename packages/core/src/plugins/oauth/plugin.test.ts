@@ -340,7 +340,9 @@ describe('createOAuthPlugin', () => {
       session,
       transport: { kind: 'cookie', token: 'session-token' }
     });
+    expect(services.storage.beginTransaction).toHaveBeenCalledTimes(2);
     expect(tx.oauthIdentities.findByProviderSubject).toHaveBeenCalledTimes(2);
+    expect(tx.users.create).toHaveBeenCalledTimes(1);
   });
 });
 

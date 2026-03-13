@@ -8,6 +8,9 @@ describe('oauth identities repository', () => {
     const query = vi.fn().mockRejectedValueOnce(duplicateError);
     const client = { query } as unknown as DatabaseClient;
     const repo = createOAuthIdentitiesRepository(client);
+    if (!repo) {
+      throw new Error('OAuth identities repository is unavailable.');
+    }
 
     const result = await repo.create({
       userId: 'user-1',
@@ -32,6 +35,9 @@ describe('oauth identities repository', () => {
     const query = vi.fn().mockResolvedValueOnce({ rows: [row] });
     const client = { query } as unknown as DatabaseClient;
     const repo = createOAuthIdentitiesRepository(client);
+    if (!repo) {
+      throw new Error('OAuth identities repository is unavailable.');
+    }
 
     const found = await repo.findByProviderSubject('google', 'subject-lookup');
 

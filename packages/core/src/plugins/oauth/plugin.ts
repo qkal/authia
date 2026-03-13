@@ -18,6 +18,7 @@ type OAuthRuntimeConfig = {
 };
 
 const STATE_TTL_MS = 5 * 60 * 1000;
+const OAUTH_IDENTITY_RACE_RETRY = 'OAUTH_IDENTITY_RACE_RETRY';
 
 function isAuthError<T>(value: T | AuthError): value is AuthError {
   return typeof value === 'object' && value !== null && 'category' in value && 'code' in value;
@@ -35,6 +36,15 @@ function storageUnavailable(message: string): AuthError {
   return {
     category: 'infrastructure',
     code: 'STORAGE_UNAVAILABLE',
+    message,
+    retryable: false
+  };
+}
+
+function runtimeMisconfigured(message: string): AuthError {
+  return {
+    category: 'infrastructure',
+    code: 'RUNTIME_MISCONFIGURED',
     message,
     retryable: false
   };
@@ -63,6 +73,10 @@ async function executeStartOAuth(
   services: PluginServices,
   runtimeConfig: OAuthRuntimeConfig
 ): Promise<AuthResult | AuthError> {
+  if (!services.oauthStateStore || !services.oauthProviderClient) {
+    return runtimeMisconfigured('OAuth runtime services are not configured.');
+  }
+
   const provider = providerFromBody(context);
   if (!provider) {
     return invalidInput();
@@ -103,7 +117,7 @@ async function executeStartOAuth(
     return redirectUriHash;
   }
 
-  const oauthStateStore = createOAuthStateStore(services);
+  const oauthStateStore = createOAuthStateStore({ oauthStateStore: services.oauthStateStore });
   const created = await oauthStateStore.create({
     provider,
     stateHash,
@@ -115,7 +129,7 @@ async function executeStartOAuth(
     return storageUnavailable(created.message);
   }
 
-  const oauthProviderClient = createOAuthProviderClient(services);
+  const oauthProviderClient = createOAuthProviderClient({ oauthProviderClient: services.oauthProviderClient });
   const redirectUri = callbackUrl(runtimeConfig.publicOrigin, providerConfig.callbackPath);
   const authorizationUrl = oauthProviderClient.buildAuthorizationUrl({
     providerId: provider,
@@ -140,6 +154,10 @@ async function executeFinishOAuth(
   services: PluginServices,
   runtimeConfig: OAuthRuntimeConfig
 ): Promise<AuthResult | AuthError> {
+  if (!services.oauthStateStore || !services.oauthProviderClient) {
+    return runtimeMisconfigured('OAuth runtime services are not configured.');
+  }
+
   const provider = providerFromBody(context);
   const code = context.body?.code;
   const state = context.body?.state;
@@ -158,7 +176,7 @@ async function executeFinishOAuth(
     return stateHash;
   }
 
-  const oauthStateStore = createOAuthStateStore(services);
+  const oauthStateStore = createOAuthStateStore({ oauthStateStore: services.oauthStateStore });
   const consumed = await oauthStateStore.consume({
     provider,
     stateHash,
@@ -171,7 +189,7 @@ async function executeFinishOAuth(
     return invalidInput();
   }
 
-  const oauthProviderClient = createOAuthProviderClient(services);
+  const oauthProviderClient = createOAuthProviderClient({ oauthProviderClient: services.oauthProviderClient });
   const exchanged = await oauthProviderClient.exchangeCode({
     providerId: provider,
     code,
@@ -185,8 +203,37 @@ async function executeFinishOAuth(
     return storageUnavailable(exchanged.message);
   }
 
+  const issueSessionForUser = async (
+    tx: Parameters<PluginServices['storage']['beginTransaction']>[0] extends (tx: infer T) => Promise<unknown> ? T : never,
+    userId: string
+  ): Promise<AuthResult> => {
+    const user = await tx.users.find(userId);
+    if (isAuthError(user)) {
+      throw createRollbackSignal(user);
+    }
+    if (!user) {
+      throw createRollbackSignal(storageUnavailable('OAuth identity user could not be loaded.'));
+    }
+
+    const issued = await services.sessions.issueSession(user, tx, context);
+    if (isAuthError(issued)) {
+      throw createRollbackSignal(issued);
+    }
+
+    return {
+      kind: 'success' as const,
+      action: 'finishOAuth' as const,
+      subject: user,
+      session: issued.session,
+      transport: issued.transport
+    };
+  };
+
   try {
     return await services.storage.beginTransaction(async (tx) => {
+      if (!tx.oauthIdentities) {
+        throw createRollbackSignal(runtimeMisconfigured('OAuth identity storage is not configured.'));
+      }
       let oauthIdentity = await tx.oauthIdentities.findByProviderSubject(provider, exchanged.providerSubject);
       if (isAuthError(oauthIdentity)) {
         throw createRollbackSignal(oauthIdentity);
@@ -207,14 +254,7 @@ async function executeFinishOAuth(
 
         if (isAuthError(createdIdentity)) {
           if (createdIdentity.code === 'DUPLICATE_IDENTITY') {
-            oauthIdentity = await tx.oauthIdentities.findByProviderSubject(provider, exchanged.providerSubject);
-            if (isAuthError(oauthIdentity)) {
-              throw createRollbackSignal(oauthIdentity);
-            }
-            if (!oauthIdentity) {
-              throw createRollbackSignal(storageUnavailable('OAuth identity collision could not be resolved.'));
-            }
-            userId = oauthIdentity.userId;
+            throw createRollbackSignal(storageUnavailable(OAUTH_IDENTITY_RACE_RETRY));
           } else {
             throw createRollbackSignal(createdIdentity);
           }
@@ -223,29 +263,36 @@ async function executeFinishOAuth(
         }
       }
 
-      const user = await tx.users.find(userId);
-      if (isAuthError(user)) {
-        throw createRollbackSignal(user);
-      }
-      if (!user) {
-        throw createRollbackSignal(storageUnavailable('OAuth identity user could not be loaded.'));
-      }
-
-      const issued = await services.sessions.issueSession(user, tx, context);
-      if (isAuthError(issued)) {
-        throw createRollbackSignal(issued);
-      }
-
-      return {
-        kind: 'success' as const,
-        action: 'finishOAuth' as const,
-        subject: user,
-        session: issued.session,
-        transport: issued.transport
-      };
+      return issueSessionForUser(tx, userId);
     });
   } catch (error) {
     if (isRollbackSignal(error)) {
+      if (
+        isAuthError(error.outcome) &&
+        error.outcome.code === 'STORAGE_UNAVAILABLE' &&
+        error.outcome.message === OAUTH_IDENTITY_RACE_RETRY
+      ) {
+        try {
+          return await services.storage.beginTransaction(async (tx) => {
+            if (!tx.oauthIdentities) {
+              throw createRollbackSignal(runtimeMisconfigured('OAuth identity storage is not configured.'));
+            }
+            const oauthIdentity = await tx.oauthIdentities.findByProviderSubject(provider, exchanged.providerSubject);
+            if (isAuthError(oauthIdentity)) {
+              throw createRollbackSignal(oauthIdentity);
+            }
+            if (!oauthIdentity) {
+              throw createRollbackSignal(storageUnavailable('OAuth identity collision could not be resolved.'));
+            }
+            return issueSessionForUser(tx, oauthIdentity.userId);
+          });
+        } catch (retryError) {
+          if (isRollbackSignal(retryError)) {
+            return retryError.outcome;
+          }
+          return storageUnavailable('OAuth callback retry transaction failed unexpectedly.');
+        }
+      }
       return error.outcome;
     }
     return storageUnavailable('OAuth callback transaction failed unexpectedly.');

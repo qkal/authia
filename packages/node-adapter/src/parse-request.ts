@@ -48,6 +48,14 @@ function resolveAction(config: AuthConfig, method: string, pathname: string): Su
   return null;
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isRelativeRedirect(value: string): boolean {
+  return value.startsWith('/') && !value.startsWith('//');
+}
+
 export async function parseRequest(
   input: ParseInput,
   config: Pick<
@@ -124,6 +132,23 @@ export async function parseRequest(
     } else if (typeof input.body === 'object' && input.body !== null) {
       body = input.body as RequestContext['body'];
     } else {
+      return invalidInputResult();
+    }
+  }
+
+  if (action === 'startOAuth') {
+    if (!body || !isNonEmptyString(body.provider)) {
+      return invalidInputResult();
+    }
+    if (body.redirectTo !== undefined) {
+      if (typeof body.redirectTo !== 'string' || !isRelativeRedirect(body.redirectTo)) {
+        return invalidInputResult();
+      }
+    }
+  }
+
+  if (action === 'finishOAuth') {
+    if (!body || !isNonEmptyString(body.provider) || !isNonEmptyString(body.code) || !isNonEmptyString(body.state)) {
       return invalidInputResult();
     }
   }

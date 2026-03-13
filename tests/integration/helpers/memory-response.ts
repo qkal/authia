@@ -1,5 +1,4 @@
 import type { AdapterResponse, AuthError, NotHandled } from '../../../packages/contracts/src/index.js';
-import type { Cycle1ReferenceApp } from '../../../examples/cycle1-compose.js';
 
 type MemoryRequest = {
   method: string;
@@ -10,7 +9,10 @@ type MemoryRequest = {
 
 type RuntimeResult = AdapterResponse | AuthError | NotHandled;
 
-export function createMemoryResponseClient(app: Cycle1ReferenceApp, publicOrigin: string) {
+export function createMemoryResponseClient(
+  app: { handleRequest: (input: { method: string; url: string; headers: Record<string, string>; cookies: Record<string, string>; body?: unknown }) => Promise<RuntimeResult> },
+  publicOrigin: string
+) {
   return {
     send: async (input: MemoryRequest): Promise<RuntimeResult> => {
       const headers: Record<string, string> = {

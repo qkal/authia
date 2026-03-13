@@ -139,6 +139,93 @@ describe('createNodeRuntimeAdapter', () => {
     expect(result).toEqual({ kind: 'denied', code: 'INVALID_INPUT' });
   });
 
+  it('parses startOAuth body with provider and relative redirect', async () => {
+    const adapter = createNodeRuntimeAdapter(createOAuthConfig());
+
+    const result = await adapter.parseRequest({
+      method: 'POST',
+      url: 'https://example.com/auth/oauth/start',
+      headers: {},
+      cookies: {},
+      body: {
+        provider: 'github',
+        redirectTo: '/dashboard'
+      }
+    });
+
+    if ('runtime' in result) {
+      expect(result.action).toBe('startOAuth');
+      expect(result.body).toEqual({
+        provider: 'github',
+        redirectTo: '/dashboard'
+      });
+      return;
+    }
+    throw new Error('Expected parseRequest to return RequestContext.');
+  });
+
+  it('parses finishOAuth body with provider code and state', async () => {
+    const adapter = createNodeRuntimeAdapter(createOAuthConfig());
+
+    const result = await adapter.parseRequest({
+      method: 'POST',
+      url: 'https://example.com/auth/oauth/finish',
+      headers: {},
+      cookies: {},
+      body: {
+        provider: 'github',
+        code: 'oauth-code',
+        state: 'oauth-state'
+      }
+    });
+
+    if ('runtime' in result) {
+      expect(result.action).toBe('finishOAuth');
+      expect(result.body).toEqual({
+        provider: 'github',
+        code: 'oauth-code',
+        state: 'oauth-state'
+      });
+      return;
+    }
+    throw new Error('Expected parseRequest to return RequestContext.');
+  });
+
+  it('rejects malformed finishOAuth payload fields', async () => {
+    const adapter = createNodeRuntimeAdapter(createOAuthConfig());
+
+    const result = await adapter.parseRequest({
+      method: 'POST',
+      url: 'https://example.com/auth/oauth/finish',
+      headers: {},
+      cookies: {},
+      body: {
+        provider: 'github',
+        code: '',
+        state: 'oauth-state'
+      }
+    });
+
+    expect(result).toEqual({ kind: 'denied', code: 'INVALID_INPUT' });
+  });
+
+  it('rejects invalid startOAuth redirectTo values', async () => {
+    const adapter = createNodeRuntimeAdapter(createOAuthConfig());
+
+    const result = await adapter.parseRequest({
+      method: 'POST',
+      url: 'https://example.com/auth/oauth/start',
+      headers: {},
+      cookies: {},
+      body: {
+        provider: 'github',
+        redirectTo: 'https://evil.example'
+      }
+    });
+
+    expect(result).toEqual({ kind: 'denied', code: 'INVALID_INPUT' });
+  });
+
   it('maps result objects into runtime responses', async () => {
     const success = await applyResult({
       kind: 'success',
@@ -211,4 +298,27 @@ function createConfig(overrides?: Partial<AuthConfig>): AuthConfig {
   };
 
   return { ...config, ...overrides };
+}
+
+function createOAuthConfig(): AuthConfig {
+  const config = createConfig();
+  return {
+    ...config,
+    plugins: ['emailPassword', 'oauth'],
+    entrypointMethods: {
+      ...config.entrypointMethods,
+      startOAuth: 'POST',
+      finishOAuth: 'POST'
+    },
+    entrypointPaths: {
+      ...config.entrypointPaths,
+      startOAuth: '/auth/oauth/start',
+      finishOAuth: '/auth/oauth/finish'
+    },
+    entrypointTransport: {
+      ...config.entrypointTransport,
+      startOAuth: 'cookie',
+      finishOAuth: 'cookie'
+    }
+  };
 }

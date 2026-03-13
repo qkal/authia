@@ -8,6 +8,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:integration": "vitest run \"tests/integration/cycle1-reference-flow.test.ts\"",
+    "test:oauth": "vitest run \"tests/integration/cycle2-oauth-reference-flow.test.ts\"",
     "example:cycle1": "node --eval \"import('./examples/cycle1-compose.ts').then(() => console.log('cycle1 composition module loaded'))\""
   },
   "devDependencies": {

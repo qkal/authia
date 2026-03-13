@@ -25,6 +25,9 @@ describe('oauth states repository', () => {
 
     const client = { query } as unknown as DatabaseClient;
     const repo = createOAuthStatesRepository(client);
+    if (!repo) {
+      throw new Error('OAuth states repository is unavailable.');
+    }
 
     const created = await repo.create({
       provider: 'github',
@@ -62,6 +65,9 @@ describe('oauth states repository', () => {
     const query = vi.fn().mockResolvedValueOnce({ rows: [] });
     const client = { query } as unknown as DatabaseClient;
     const repo = createOAuthStatesRepository(client);
+    if (!repo) {
+      throw new Error('OAuth states repository is unavailable.');
+    }
 
     const consumed = await repo.consume({
       provider: 'github',
