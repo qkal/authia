@@ -57,7 +57,7 @@ export function validateStartupConfig(
   }
 
   const routeKeys = new Set<string>();
-  for (const action of Object.keys(config.entrypointMethods) as SupportedAction[]) {
+  for (const action of configuredActions) {
     const routeKey = `${config.entrypointMethods[action]}:${config.entrypointPaths[action]}`;
     if (routeKeys.has(routeKey)) {
       return {

@@ -115,7 +115,7 @@ export type AuthConfig = {
   runtimeAdapter: 'node';
   storageAdapter: 'postgres';
   cryptoProvider: 'default';
-  plugins: Array<'emailPassword'>;
+  plugins: Array<'emailPassword' | 'oauth'>;
   publicOrigin: string;
   trustedForwardedHeaders: Array<'x-forwarded-host' | 'x-forwarded-proto'>;
   cookieOptions: {
