@@ -1,5 +1,6 @@
 import type { AuthConfig, AuthError, AuthResult, Plugin, PluginServices, RequestContext } from '@authia/contracts';
 import { createRollbackSignal } from '../../kernel/rollback-signal.js';
+import { createEmailDeliveryClient } from './delivery-client.js';
 
 const PASSWORD_RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -209,7 +210,8 @@ async function executeRequestPasswordReset(
     }
 
     if (services.emailDelivery) {
-      const delivered = await services.emailDelivery.sendPasswordReset({
+      const emailDelivery = createEmailDeliveryClient({ emailDelivery: services.emailDelivery });
+      const delivered = await emailDelivery.sendPasswordReset({
         email: normalizedEmail,
         resetToken: token
       });
@@ -343,7 +345,8 @@ async function executeRequestEmailVerification(
       }
 
       if (services.emailDelivery) {
-        const delivered = await services.emailDelivery.sendEmailVerification({
+        const emailDelivery = createEmailDeliveryClient({ emailDelivery: services.emailDelivery });
+        const delivered = await emailDelivery.sendEmailVerification({
           email: normalizedEmail,
           verificationToken: token
         });
