@@ -347,6 +347,50 @@ describe('createEmailPasswordPlugin', () => {
         normalizedEmail: 'user@example.com'
       })
     );
+    expect(services.emailDelivery.sendPasswordReset).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      resetToken: 'reset-token'
+    });
+  });
+
+  it('maps password reset delivery failures to STORAGE_UNAVAILABLE', async () => {
+    const plugin = createEmailPasswordPlugin();
+    const services = createPluginServices();
+
+    services.storage.identities.findByNormalizedEmail.mockResolvedValue({
+      id: 'identity-1',
+      userId: 'user-1',
+      normalizedEmail: 'user@example.com',
+      passwordHash: 'stored-hash'
+    });
+    services.crypto.generateOpaqueToken.mockResolvedValue('reset-token');
+    services.crypto.deriveTokenId.mockResolvedValue('reset-token-hash');
+    services.storage.passwordResetTokens.create.mockResolvedValue({
+      id: 'reset-id',
+      tokenHash: 'reset-token-hash',
+      normalizedEmail: 'user@example.com',
+      expiresAt: '2025-01-01T00:15:00.000Z',
+      consumedAt: null
+    });
+    services.emailDelivery.sendPasswordReset.mockResolvedValue({
+      category: 'infrastructure',
+      code: 'STORAGE_UNAVAILABLE',
+      message: 'Email provider unavailable',
+      retryable: true
+    });
+
+    const result = await plugin.execute(
+      'requestPasswordReset',
+      createContext({ body: { email: 'user@example.com' } }),
+      services as unknown as PluginServices
+    );
+
+    expect(result).toEqual({
+      category: 'infrastructure',
+      code: 'STORAGE_UNAVAILABLE',
+      message: 'Email provider unavailable',
+      retryable: false
+    });
   });
 
   it('consumes reset token, updates password hash, and revokes sessions on resetPassword', async () => {
@@ -436,6 +480,10 @@ describe('createEmailPasswordPlugin', () => {
     expect(services.storage.emailVerificationTokens.create).toHaveBeenCalledWith(
       expect.objectContaining({ tokenHash: 'verify-token-hash', normalizedEmail: 'user@example.com' })
     );
+    expect(services.emailDelivery.sendEmailVerification).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      verificationToken: 'verify-token'
+    });
   });
 
   it('consumes verification token and marks email as verified', async () => {
@@ -598,11 +646,21 @@ function createPluginServices() {
     revokeAllSessions: vi.fn()
   };
 
+  const emailDelivery = {
+    sendPasswordReset: vi.fn<NonNullable<PluginServices['emailDelivery']>['sendPasswordReset']>(
+      async () => undefined
+    ),
+    sendEmailVerification: vi.fn<NonNullable<PluginServices['emailDelivery']>['sendEmailVerification']>(
+      async () => undefined
+    )
+  };
+
   return {
     tx,
     storage,
     crypto,
-    sessions
+    sessions,
+    emailDelivery
   };
 }
 

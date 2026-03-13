@@ -83,6 +83,10 @@ export type PluginServices = {
       codeVerifier: string;
     }) => Promise<AuthValue<{ providerSubject: string }>>;
   };
+  emailDelivery?: {
+    sendPasswordReset: (input: { email: string; resetToken: string }) => Promise<AuthValue<void>>;
+    sendEmailVerification: (input: { email: string; verificationToken: string }) => Promise<AuthValue<void>>;
+  };
 };
 
 export type Plugin = {

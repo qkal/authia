@@ -207,6 +207,16 @@ async function executeRequestPasswordReset(
     if (isAuthError(created)) {
       return storageUnavailable(created.message);
     }
+
+    if (services.emailDelivery) {
+      const delivered = await services.emailDelivery.sendPasswordReset({
+        email: normalizedEmail,
+        resetToken: token
+      });
+      if (isAuthError(delivered)) {
+        return storageUnavailable(delivered.message);
+      }
+    }
   }
 
   return {
@@ -330,6 +340,16 @@ async function executeRequestEmailVerification(
       });
       if (isAuthError(created)) {
         return storageUnavailable(created.message);
+      }
+
+      if (services.emailDelivery) {
+        const delivered = await services.emailDelivery.sendEmailVerification({
+          email: normalizedEmail,
+          verificationToken: token
+        });
+        if (isAuthError(delivered)) {
+          return storageUnavailable(delivered.message);
+        }
       }
     }
   }
