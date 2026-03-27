@@ -92,36 +92,31 @@ async function executeStartOAuth(
     return invalidInput();
   }
 
-  const [stateResult, codeVerifierResult, redirectUriHash] = await Promise.all([
-    (async () => {
-      const state = await services.crypto.generateOpaqueToken();
-      if (isAuthError(state)) return state;
-      const stateHash = await services.crypto.deriveTokenId(state);
-      if (isAuthError(stateHash)) return stateHash;
-      return { state, stateHash };
-    })(),
-    (async () => {
-      const codeVerifier = await services.crypto.generateOpaqueToken();
-      if (isAuthError(codeVerifier)) return codeVerifier;
-      const codeChallenge = await services.crypto.deriveTokenVerifier(codeVerifier);
-      if (isAuthError(codeChallenge)) return codeChallenge;
-      return { codeVerifier, codeChallenge };
-    })(),
+  const state = await services.crypto.generateOpaqueToken();
+  if (isAuthError(state)) {
+    return state;
+  }
+
+  const codeVerifier = await services.crypto.generateOpaqueToken();
+  if (isAuthError(codeVerifier)) {
+    return codeVerifier;
+  }
+
+  const [codeChallenge, stateHash, redirectUriHash] = await Promise.all([
+    services.crypto.deriveTokenVerifier(codeVerifier),
+    services.crypto.deriveTokenId(state),
     services.crypto.deriveTokenId(redirectTo ?? '/')
   ]);
 
-  if (isAuthError(stateResult)) {
-    return stateResult;
+  if (isAuthError(codeChallenge)) {
+    return codeChallenge;
   }
-  if (isAuthError(codeVerifierResult)) {
-    return codeVerifierResult;
+  if (isAuthError(stateHash)) {
+    return stateHash;
   }
   if (isAuthError(redirectUriHash)) {
     return redirectUriHash;
   }
-
-  const { state, stateHash } = stateResult;
-  const { codeVerifier, codeChallenge } = codeVerifierResult;
 
   const oauthStateStore = createOAuthStateStore({ oauthStateStore: services.oauthStateStore });
   const created = await oauthStateStore.create({
