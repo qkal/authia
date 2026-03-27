@@ -18,12 +18,15 @@ export async function issueSession(
     return token;
   }
 
-  const tokenId = await services.crypto.deriveTokenId(token);
+  const [tokenId, tokenVerifier] = await Promise.all([
+    services.crypto.deriveTokenId(token),
+    services.crypto.deriveTokenVerifier(token)
+  ]);
+
   if (isAuthError(tokenId)) {
     return tokenId;
   }
 
-  const tokenVerifier = await services.crypto.deriveTokenVerifier(token);
   if (isAuthError(tokenVerifier)) {
     return tokenVerifier;
   }
